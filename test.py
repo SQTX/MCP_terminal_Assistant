@@ -189,16 +189,121 @@
 # Działające, proste narzędzie MCP otwierające iTerm2 i wysyłające komendę
 # =========================================================================
 
+# from mcp.server.fastmcp import FastMCP
+# import subprocess
+
+# mcp = FastMCP("Test")
+
+
+# def run_in_iterm(cmd: str):
+#     """
+#     Otwiera nowe okno iTerm2 i wysyła komendę.
+#     """
+#     applescript = f'''
+#     tell application "iTerm2"
+#         activate
+#         try
+#             set newWindow to (create window with default profile)
+#         on error
+#             -- jeśli nie da się utworzyć nowego okna, użyj aktualnego
+#             set newWindow to current window
+#         end try
+#         tell current session of newWindow
+#             write text "{cmd}"
+#         end tell
+#     end tell
+#     '''
+#     subprocess.run(["osascript", "-e", applescript])
+
+
+# @mcp.tool()
+# def hello_iterm() -> str:
+#     """
+#     MCP tool: otwiera iTerm2 i wysyła 'echo Hello from AppleScript'.
+#     """
+#     try:
+#         run_in_iterm("echo Hello from AppleScript")
+#         return "✅ Komenda wysłana do iTerm2"
+#     except Exception as e:
+#         return f"❌ Błąd: {e}"
+
+
+# if __name__ == "__main__":
+#     mcp.run()
+
+
+# from mcp.server.fastmcp import FastMCP
+# import subprocess
+
+# mcp = FastMCP("Test")
+
+
+# def run_in_iterm(commands: list[str]):
+#     """
+#     Otwiera nowe okno iTerm2 i wysyła kolejne komendy po kolei.
+#     """
+#     # Budujemy sekwencję poleceń do AppleScript
+#     script_lines = []
+#     for cmd in commands:
+#         script_lines.append(f'write text "{cmd}"')
+#     joined_commands = "\n".join(script_lines)
+
+#     applescript = f'''
+#     tell application "iTerm2"
+#         activate
+#         try
+#             set newWindow to (create window with default profile)
+#         on error
+#             -- jeśli nie da się utworzyć nowego okna, użyj aktualnego
+#             set newWindow to current window
+#         end try
+#         tell current session of newWindow
+#             {joined_commands}
+#         end tell
+#     end tell
+#     '''
+#     subprocess.run(["osascript", "-e", applescript])
+
+
+# @mcp.tool()
+# def hello_iterm() -> str:
+#     """
+#     MCP tool: otwiera iTerm2 i wysyła kilka komend jedna po drugiej.
+#     """
+#     try:
+#         run_in_iterm([
+#             "echo Pierwsza komenda",
+#             "pwd",
+#             "ls -l",
+#             "echo ✅ Wszystkie komendy wykonane"
+#         ])
+#         return "✅ Sekwencja poleceń wysłana do iTerm2"
+#     except Exception as e:
+#         return f"❌ Błąd: {e}"
+
+
+# if __name__ == "__main__":
+#     mcp.run()
+
+
+
+
 from mcp.server.fastmcp import FastMCP
 import subprocess
+from typing import List
 
 mcp = FastMCP("Test")
 
 
-def run_in_iterm(cmd: str):
+def run_in_iterm(commands: List[str]):
     """
-    Otwiera nowe okno iTerm2 i wysyła komendę.
+    Otwiera nowe okno iTerm2 i wysyła kolejne komendy po kolei.
     """
+    script_lines = []
+    for cmd in commands:
+        script_lines.append(f'write text "{cmd}"')
+    joined_commands = "\n".join(script_lines)
+
     applescript = f'''
     tell application "iTerm2"
         activate
@@ -209,7 +314,7 @@ def run_in_iterm(cmd: str):
             set newWindow to current window
         end try
         tell current session of newWindow
-            write text "{cmd}"
+            {joined_commands}
         end tell
     end tell
     '''
@@ -217,13 +322,20 @@ def run_in_iterm(cmd: str):
 
 
 @mcp.tool()
-def hello_iterm() -> str:
+def run_commands(commands: List[str]) -> str:
     """
-    MCP tool: otwiera iTerm2 i wysyła 'echo Hello from AppleScript'.
+    MCP tool: przyjmuje listę poleceń i wysyła je do iTerm2.
+    Niech cigi znaków w polceniu wyznaczone będą przez pojedyczny cudzysłów (`'`).
+    
+    Args:
+        commands (List[str]): Lista poleceń do wykonania w iTerm2.
     """
     try:
-        run_in_iterm("echo Hello from AppleScript")
-        return "✅ Komenda wysłana do iTerm2"
+        if not commands:
+            return "⚠️ Lista poleceń jest pusta"
+        
+        run_in_iterm(commands)
+        return f"✅ Wysłano {len(commands)} poleceń do iTerm2"
     except Exception as e:
         return f"❌ Błąd: {e}"
 
