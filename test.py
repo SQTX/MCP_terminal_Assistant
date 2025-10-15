@@ -346,8 +346,63 @@
 # # if __name__ == "__main__":
 # #     mcp.run()
 
+# #* =========================================================================
+# #* Wersja z uruchamianiem komend w oknach terminala i zwracaniem outputu do LLM
+# #* =========================================================================
+# from mcp.server.fastmcp import FastMCP
+# import subprocess
+# from typing import List
+
+# mcp = FastMCP("Test")
+
+# def run_command(cmd: str) -> str:
+#     """
+#     Uruchamia komendę w nowym oknie iTerm2 (macOS)
+#     i zwraca jej wynik do klienta LLM.
+#     """
+#     try:
+#         # 1️⃣ Uruchom komendę w tle i zbierz output
+#         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+#         output = (result.stdout + "\n" + result.stderr).strip()
+
+#         # 2️⃣ Otwórz nowe okno iTerm2 z tą samą komendą
+#         subprocess.Popen([
+#             "osascript", "-e",
+#             f'''
+#             tell application "iTerm"
+#                 create window with default profile
+#                 tell current session of current window
+#                     write text "{cmd}"
+#                 end tell
+#                 activate
+#             end tell
+#             '''
+#         ])
+
+#         # 3️⃣ Zwróć wynik do LLM
+#         return f"✅ Uruchomiono: {cmd}\n\n{output.strip()}"
+#     except Exception as e:
+#         return f"❌ Błąd uruchamiania '{cmd}': {e}"
+
+# @mcp.tool()
+# def run_interactive(commands: List[str]) -> str:
+#     """
+#     MCP tool: uruchamia listę poleceń po kolei.
+#     Po każdym poleceniu zwraca wynik, który może być analizowany przez LLM
+#     w celu wygenerowania następnego polecenia.
+#     """
+#     history = []
+#     for cmd in commands:
+#         output = run_command(cmd)
+#         history.append(f"$ {cmd}\n{output}")
+#     return "\n\n".join(history)
+
+# if __name__ == "__main__":
+#     mcp.run()
+
+
 #* =========================================================================
-#* Wersja z uruchamianiem komend w oknach terminala i zwracaniem outputu do LLM
+#* Wersja wykca polecenia w pojedynczym oknie terminala i zwracaniem outputu do LLM
 #* =========================================================================
 from mcp.server.fastmcp import FastMCP
 import subprocess
@@ -355,32 +410,65 @@ from typing import List
 
 mcp = FastMCP("Test")
 
+# Przechowujemy ID okna iTerm2 dla sesji
+_iterm_window_id = None
+
+def ensure_iterm_window():
+    """
+    Tworzy jedno okno iTerm2 przy pierwszym wywołaniu
+    i zapamiętuje jego ID dla kolejnych poleceń.
+    """
+    global _iterm_window_id
+    
+    if _iterm_window_id is None:
+        script = '''
+        tell application "iTerm"
+            set newWindow to (create window with default profile)
+            set windowID to id of newWindow
+            activate
+            return windowID
+        end tell
+        '''
+        result = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            text=True
+        )
+        _iterm_window_id = result.stdout.strip()
+    
+    return _iterm_window_id
+
 def run_command(cmd: str) -> str:
     """
-    Uruchamia komendę w nowym oknie iTerm2 (macOS)
+    Uruchamia komendę w istniejącym oknie iTerm2 (macOS)
     i zwraca jej wynik do klienta LLM.
     """
     try:
-        # 1️⃣ Uruchom komendę w tle i zbierz output
+        # 1️⃣ Uruchom komendę i zbierz output
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         output = (result.stdout + "\n" + result.stderr).strip()
 
-        # 2️⃣ Otwórz nowe okno iTerm2 z tą samą komendą
+        # 2️⃣ Wyślij komendę do istniejącego okna iTerm2
+        window_id = ensure_iterm_window()
+        
+        # Escape cudzysłowów w komendzie
+        escaped_cmd = cmd.replace('"', '\\"').replace("'", "\\'")
+        
         subprocess.Popen([
             "osascript", "-e",
             f'''
             tell application "iTerm"
-                create window with default profile
-                tell current session of current window
-                    write text "{cmd}"
+                tell first window whose id is {window_id}
+                    tell current session
+                        write text "{escaped_cmd}"
+                    end tell
                 end tell
-                activate
             end tell
             '''
         ])
 
         # 3️⃣ Zwróć wynik do LLM
-        return f"✅ Uruchomiono: {cmd}\n\n{output.strip()}"
+        return f"✅ Uruchomiono: {cmd}\n\n{output}"
     except Exception as e:
         return f"❌ Błąd uruchamiania '{cmd}': {e}"
 
