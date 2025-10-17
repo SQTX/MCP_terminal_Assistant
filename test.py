@@ -69,8 +69,9 @@ def run_command(cmd: str) -> str:
 
         #* Return output to LLM
         return f"Executed: {cmd}\n\n{output}"
+    
     except Exception as e:
-        return f"Executed error: '{cmd}': {e}"
+        return f"Executed error '{cmd}': {e}"
 
 
 @mcp.tool()
