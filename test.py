@@ -1,3 +1,14 @@
+#$ -*- coding: utf-8 -*-
+#$ **********************************************************************
+#$ @author      Jakub SQTX Sitarczyk
+#$ @created     2025-10-10
+#$ @updated     2025-10-17
+#$ @license     MIT
+#$ @description MCP server providing LLM with interactive iTerm2 access for automated command execution and system operations on macOS.
+#$
+#$ "Quality is more important than quantity." ~ Steve Jobs
+#$ **********************************************************************
+#$
 from mcp.server.fastmcp import FastMCP
 import subprocess
 from typing import List
